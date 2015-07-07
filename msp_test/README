@@ -1,0 +1,87 @@
+
+
+针对修改逻辑，已经添加的特性进行功能测试
+
+
+1、新增upstream配置 port和servers字段
+1）详细描述
+	服务在集群部署时，各业务如果部署每台机器上的部署方式都类似，在上下线新机器时，如果有以下特性的支持，
+	将使得配置的维护工作变得简单。
+	upstream ips {
+		server 192.168.10.1;
+		server 192.168.10.2;
+		server 192.168.10.3;
+		server 192.168.10.4;
+		server 192.168.10.5;
+		server 192.168.10.6;
+		server 192.168.10.7;
+	}
+	
+	upstream s_iat {
+		iphash;
+		port 9101;
+		servers ips; 
+	}
+	
+	upstream s_tts {
+		iphash;
+		port 9102;
+		servers ips; 
+	}
+	
+2）测试方法
+	a)如上配置2个服务，端口不同，使用相同的ip地址集，在ip集中先加入一个地址，查看分发功能是否正常。
+	b)在ip集中加入2个地址，去除iphash功能，看分发是否能到2台地址上。
+	c)在iphash模式下，客户端启动2个连续地址，查看能否分发到2台服务器上。
+	
+	
+2、精简协议的支持
+1）详细描述
+	配置中location新增thin_prot配置，值为on/off
+	该功能主要为了精简http中的文本字段，例如去处server、host，或者支持CL来替代Content-Length
+	
+	location ~ /index.htm {
+		thin_prot on;
+            
+        msp_pass s_tts;
+    }
+	
+2）测试方法
+	a)使用msp客户端发送协议，看能否成功转发到后端，并确定字段是否正常
+
+	
+3、msp协议支持
+1）详细描述
+	msp模块支持了msp协议，主要包含以下几点：
+	a）配置文件中msp模块的配置，params支持sub与url（uri）的匹配，通过这种匹配来决定最终的upstream。
+	sub是从http头部的X-Sub取得，或者X-Par中取得&sub=iat&，或者body中的msp首个content中的&sub=iat&
+	msp
+    {
+        params sub iat
+        {
+            server s_iat;
+            return;
+        }
+        params sub tts
+        {
+            server s_tts;
+            return;
+        }
+        
+    }
+	
+	b）在upstream响应中，如果携带X-RESPONSE，则不需要将消息转发给客户端。
+	
+	c)在upstream响应中，如果携带X-Accel-Redirect，则消息会重新转发到upstream，具体sub就是携带的参数。
+	
+	d)msp模块对websocket协议进行了修改，去掉了websocket的握手
+
+2）测试方法
+	
+	a)通过头部x-sub字段，并配置msp节点，通过msp_pass来确定转发逻辑，看是否正常
+	b)后端设置X-RESPONSE，看是否会给客户端响应
+	c)使用X-Accel-Redirect来确定转发逻辑
+	d)客户端配置connection：upgrade  头部来模拟websocket协议，查看响应情况
+	
+	
+	
