@@ -1,0 +1,388 @@
+diff -r src-msp/core/nginx.h src/core/nginx.h
+14c14
+< #define NGINX_VER          "Nginx-XF/" NGINX_VERSION
+---
+> #define NGINX_VER          "nginx/" NGINX_VERSION
+diff -r src-msp/http/modules/ngx_http_upstream_ip_hash_module.c src/http/modules/ngx_http_upstream_ip_hash_module.c
+124c124
+<         iphp->addrlen = 4;
+---
+>         iphp->addrlen = 3;
+diff -r src-msp/http/ngx_http_config.h src/http/ngx_http_config.h
+49,53d48
+< /*add by mklong for msp module*/
+< #define NGX_HTTP_MSP_CONF		  0x00200000
+< #define NGX_HTTP_MSP_SRV_CONF	  0x00400000
+< 
+< 
+diff -r src-msp/http/ngx_http_core_module.c src/http/ngx_http_core_module.c
+744,751d743
+<     /*add by mklong for msp module*/
+<     { ngx_string("thin_prot"),
+<       NGX_HTTP_MAIN_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+<       ngx_conf_set_flag_slot,
+<       NGX_HTTP_LOC_CONF_OFFSET,
+<       offsetof(ngx_http_core_loc_conf_t, thin_prot),
+<       NULL },
+< 
+3670,3672d3661
+<     /*add by mklong for msp module*/
+<     clcf->thin_prot = NGX_CONF_UNSET;
+< 
+3861,3862d3849
+< 
+<    /* set keepalive_requests defualt value 10000 by mklong*/
+3864,3865c3851
+<                               prev->keepalive_requests, 10000);
+<     
+---
+>                               prev->keepalive_requests, 100);
+3965,3967d3950
+< 
+<     /* add by mklong for msp module*/
+<     ngx_conf_merge_value(conf->thin_prot, prev->thin_prot, 0);
+diff -r src-msp/http/ngx_http_core_module.h src/http/ngx_http_core_module.h
+453,455d452
+<     /*add by mklong for msp module*/
+<     ngx_flag_t		thin_prot; 				/* use the reduced protocol*/
+< 
+diff -r src-msp/http/ngx_http.h src/http/ngx_http.h
+81,85d80
+< /* add by mklong for msp module*/
+< #define ngx_http_get_module_old_ctx(r, module)  (r)->old_ctx[module.ctx_index]
+< #define ngx_http_set_old_ctx(r, c, module)      r->old_ctx[module.ctx_index] = c;
+< 
+< 
+diff -r src-msp/http/ngx_http_header_filter_module.c src/http/ngx_http_header_filter_module.c
+49c49
+< static char ngx_http_server_string[] = "Server: Nginx-XF" CRLF;
+---
+> static char ngx_http_server_string[] = "Server: nginx" CRLF;
+134,137d133
+<     /*add by mklong for msp module*/
+<     { ngx_string("CL"),
+<                 offsetof(ngx_http_headers_out_t, content_length) },
+<                  
+284c280
+<     if (r->headers_out.server == NULL && clcf->thin_prot == 0 ) {
+---
+>     if (r->headers_out.server == NULL) {
+289c285
+<     if (r->headers_out.date == NULL && clcf->thin_prot == 0 ) {
+---
+>     if (r->headers_out.date == NULL) {
+393,394c389
+<         
+<         if (clcf->thin_prot != 1){
+---
+>         len += sizeof("Connection: keep-alive" CRLF) - 1;
+396c391,397
+<             len += sizeof("Connection: keep-alive" CRLF) - 1;
+---
+>         /*
+>          * MSIE and Opera ignore the "Keep-Alive: timeout=<N>" header.
+>          * MSIE keeps the connection alive for about 60-65 seconds.
+>          * Opera keeps the connection alive very long.
+>          * Mozilla keeps the connection alive for N plus about 1-10 seconds.
+>          * Konqueror keeps the connection alive for about N seconds.
+>          */
+398,408c399,400
+<             /*
+<              * MSIE and Opera ignore the "Keep-Alive: timeout=<N>" header.
+<              * MSIE keeps the connection alive for about 60-65 seconds.
+<              * Opera keeps the connection alive very long.
+<              * Mozilla keeps the connection alive for N plus about 1-10 seconds.
+<              * Konqueror keeps the connection alive for about N seconds.
+<              */
+< 
+<             if (clcf->keepalive_header) {
+<                 len += sizeof("Keep-Alive: timeout=") - 1 + NGX_TIME_T_LEN + 2;
+<             }
+---
+>         if (clcf->keepalive_header) {
+>             len += sizeof("Keep-Alive: timeout=") - 1 + NGX_TIME_T_LEN + 2;
+466c458
+<     if (r->headers_out.server == NULL && clcf->thin_prot == 0 ) {
+---
+>     if (r->headers_out.server == NULL) {
+479c471
+<     if (r->headers_out.date == NULL && clcf->thin_prot == 0 ) {
+---
+>     if (r->headers_out.date == NULL) {
+570,577c562,567
+<         if (clcf->thin_prot != 1){
+<             b->last = ngx_cpymem(b->last, "Connection: keep-alive" CRLF,
+<                                  sizeof("Connection: keep-alive" CRLF) - 1);
+< 
+<             if (clcf->keepalive_header) {
+<                 b->last = ngx_sprintf(b->last, "Keep-Alive: timeout=%T" CRLF,
+<                                       clcf->keepalive_header);
+<             }
+---
+>         b->last = ngx_cpymem(b->last, "Connection: keep-alive" CRLF,
+>                              sizeof("Connection: keep-alive" CRLF) - 1);
+> 
+>         if (clcf->keepalive_header) {
+>             b->last = ngx_sprintf(b->last, "Keep-Alive: timeout=%T" CRLF,
+>                                   clcf->keepalive_header);
+579c569
+<         
+---
+> 
+diff -r src-msp/http/ngx_http_request.c src/http/ngx_http_request.c
+113,117d112
+<     /*add by mklong for msp module*/
+<     { ngx_string("CL"),
+<                  offsetof(ngx_http_headers_in_t, content_length),
+<                  ngx_http_process_unique_header_line },
+< 
+122,130d116
+<     /*add by mklong for msp module*/
+<     { ngx_string("Sub"),
+<                 offsetof(ngx_http_headers_in_t, sub),
+<     		ngx_http_process_unique_header_line },
+< 
+<     { ngx_string("X-Sub"),
+<                 offsetof(ngx_http_headers_in_t, sub),
+<                 ngx_http_process_unique_header_line },
+< 				
+578,583d563
+<     r->old_ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
+<     if (r->old_ctx == NULL) {
+<         ngx_destroy_pool(r->pool);
+<         return NULL;
+<     }
+< 
+1786d1765
+< /* modify by mklong
+1793d1771
+< */
+diff -r src-msp/http/ngx_http_request.h src/http/ngx_http_request.h
+185d184
+<     ngx_table_elt_t                  *sub;
+365,367c364
+<     void                            **ctx;                        /* reset while redirect */
+<     void                            **old_ctx;		/* use this while redirect request get old ctx*/
+<     
+---
+>     void                            **ctx;
+537,540d533
+< 
+<     /*add by mklong for msp module*/
+<     unsigned                            non_response:1;  /* not need response */
+< 
+diff -r src-msp/http/ngx_http_upstream.c src/http/ngx_http_upstream.c
+161,166d160
+< /*add by mklong for msp module*/
+< static char *ngx_http_upstream_servers(ngx_conf_t *cf, ngx_command_t *cmd,
+<     void *conf);
+< static char *ngx_http_upstream_port(ngx_conf_t *cf, ngx_command_t *cmd,
+<     void *conf);
+< 
+198,213d191
+<     /* add by mklong for msp module */
+<     { ngx_string("CL"),
+<                 ngx_http_upstream_process_content_length,
+<                 offsetof(ngx_http_upstream_headers_in_t, content_length),
+<                 ngx_http_upstream_copy_header_line, 0, 0 },
+< 
+<     { ngx_string("X-RESPONSE"),
+<                 ngx_http_upstream_process_header_line,
+<                 offsetof(ngx_http_upstream_headers_in_t, x_response),
+<                 ngx_http_upstream_ignore_header_line, 0, 0 },
+< 
+<     { ngx_string("X-Res-Date"),
+< 				ngx_http_upstream_process_header_line,
+< 				offsetof(ngx_http_upstream_headers_in_t, x_res_date),
+< 				ngx_http_upstream_copy_header_line, 0, 0 },
+< 
+337c315
+<       NGX_HTTP_UPS_CONF|NGX_CONF_1MORE |NGX_CONF_MULTI,
+---
+>       NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
+343,359d320
+<       /* add by mklong for msp */
+<       /*servers $(upstream),use port*/
+<     
+<       { ngx_string("servers"),
+<         NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+<         ngx_http_upstream_servers,
+<         NGX_HTTP_SRV_CONF_OFFSET,
+<         0,
+<         NULL },
+< 
+<       { ngx_string("port"),
+<         NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+<         ngx_http_upstream_port,
+<         NGX_HTTP_SRV_CONF_OFFSET,
+<         0,
+<         NULL },
+< 
+2689,2695d2649
+< 
+<     if(r->non_response){
+<         r->header_only = 1;
+<         ngx_http_upstream_finalize_request(r, u, 0);
+<         return;
+<     }   
+<     
+5384d5337
+< /*
+5390c5343
+< */
+---
+> 
+5428,5433d5380
+<     uscf->servers = ngx_array_create(cf->pool, 4,
+<                                      sizeof(ngx_http_upstream_server_t));
+<     if (uscf->servers == NULL) {
+<         return NGX_CONF_ERROR;
+<     }
+< 
+5525,5532c5472
+< 
+<     //add by mklong for msp module
+<     if(uscf->default_port){
+<     	u.default_port = uscf->default_port;
+<     }
+<     else{
+<     	u.default_port = 80;
+<     }
+---
+>     u.default_port = 80;
+5568,5696d5507
+< static char *
+< ngx_http_upstream_servers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+< {
+<     ngx_http_upstream_srv_conf_t  *uscf = conf;
+< 
+<     u_char 							*port;
+<     ngx_str_t                   *value;
+<     ngx_url_t                    u,ut;
+< 
+<     ngx_http_upstream_server_t  *us,*us_old;
+<     ngx_uint_t                      i;
+<     ngx_http_upstream_main_conf_t  *umcf;
+<     ngx_http_upstream_srv_conf_t	*uscf_old,**uscfp;
+< 
+<     value = cf->args->elts;
+< 
+<     ngx_memzero(&ut, sizeof(ngx_url_t));
+<     ut.url = value[1];
+< 
+<     if(uscf->default_port){
+<     	ut.default_port = uscf->default_port;
+<     }
+<     else{
+<     	ut.default_port = 80;
+<     }
+< 
+<     //find old uscf
+<     umcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_upstream_module);
+<     uscfp = umcf->upstreams.elts;
+< 
+<     for (i = 0; i < umcf->upstreams.nelts; i++) {
+<         if (uscfp[i]->host.len == ut.url.len
+<             && ngx_strncasecmp(uscfp[i]->host.data, ut.url.data, ut.url.len)
+<             == 0){
+< 
+<             break;
+<         }
+<     }
+< 
+<     if(i == umcf->upstreams.nelts){
+<         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+<         "upstream must be set before \"%V\"", &value[1]);
+< 
+<       return NGX_CONF_ERROR;
+<     }
+< 
+<     //set uscf servers
+<     uscf_old = uscfp[i];
+< 
+<     if (uscf->servers == NULL) {
+<           uscf->servers = ngx_array_create(cf->pool, 4,
+<                                            sizeof(ngx_http_upstream_server_t));
+<           if (uscf->servers == NULL) {
+<               return NGX_CONF_ERROR;
+<           }
+<     }
+< 
+<     for(i = 0; i < uscf_old->servers->nelts; i++){
+<         us_old = (ngx_http_upstream_server_t *)uscf_old->servers->elts + i;
+< 
+<         us = ngx_array_push(uscf->servers);
+<         if (us == NULL) {
+<             return NGX_CONF_ERROR;
+<         }
+< 
+<         ngx_memzero(us, sizeof(ngx_http_upstream_server_t));
+< 
+<         ngx_memzero(&u, sizeof(ngx_url_t));
+< 
+<         //name :127.0.0.1:80 ,repair port
+<         port = ngx_strlchr(us_old->addrs->name.data,
+<         		us_old->addrs->name.data+us_old->addrs->name.len,':');
+< 
+<         if(port == NULL){
+<         	u.url = us_old->addrs->name;
+<         }
+<         else{
+<         	u.url.data = us_old->addrs->name.data;
+<         	u.url.len = port - us_old->addrs->name.data;
+<         }
+< 
+<         if(uscf->default_port){
+<         	u.default_port = uscf->default_port;
+<         }
+<         else{
+<         	u.default_port = 80;
+<         }
+< 
+<         //parse again
+<         if (ngx_parse_url(cf->pool, &u) != NGX_OK) {
+<             if (u.err) {
+<                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+<                                    "%s in upstream \"%V\"", u.err, &u.url);
+<             }
+< 
+<             return NGX_CONF_ERROR;
+<         }
+< 
+<         us->addrs = u.addrs;
+<         us->naddrs = u.naddrs;
+<         us->weight = us_old->weight;
+<         us->max_fails = us_old->max_fails;
+<         us->fail_timeout = us_old->fail_timeout;
+<         us->backup = us_old->backup;
+<         us->down = us_old->down;
+< 
+<    	}
+< 
+<     return NGX_CONF_OK;
+< }
+< 
+< static char *
+< ngx_http_upstream_port(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+< {
+<     ngx_http_upstream_srv_conf_t  *uscf = conf;
+<     ngx_str_t                   *value;
+< 
+<     value = cf->args->elts;
+<     uscf->default_port = ngx_atoi(value[1].data,value[1].len);
+< 
+<     if(uscf->servers != NULL){
+<         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+<                            "port  \"%V\" should be set before servers", &value[1]);
+< 
+<         return NGX_CONF_ERROR;
+<     }
+< 
+<     return NGX_CONF_OK;
+< }
+diff -r src-msp/http/ngx_http_upstream.h src/http/ngx_http_upstream.h
+255,258d254
+<     //add by mklong for msp module
+<     ngx_table_elt_t                 *x_response;
+<     ngx_table_elt_t                 *x_res_date;
+< 
