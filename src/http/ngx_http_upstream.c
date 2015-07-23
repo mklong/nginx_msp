@@ -5425,10 +5425,12 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                   i;
     ngx_http_upstream_server_t  *us;
 
-    uscf->servers = ngx_array_create(cf->pool, 4,
-                                     sizeof(ngx_http_upstream_server_t));
-    if (uscf->servers == NULL) {
-        return NGX_CONF_ERROR;
+    if(uscf->servers == NULL){
+        uscf->servers = ngx_array_create(cf->pool, 4,
+                                       sizeof(ngx_http_upstream_server_t));
+        if (uscf->servers == NULL) {
+            return NGX_CONF_ERROR;
+        }
     }
 
     us = ngx_array_push(uscf->servers);
