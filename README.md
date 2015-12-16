@@ -1,5 +1,5 @@
 
-![image description](http://www.xfyun.cn/img/default/logo.png?version=20150325)
+![image description](https://github.com/mklong/nginx_msp/blob/master/img/logo.png)
 
 welcome to [http://www.xfyun.cn](http://example.com)
 
