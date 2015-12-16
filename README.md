@@ -1,7 +1,7 @@
 
 ![image description](https://github.com/mklong/nginx_msp/blob/master/img/logo.png)
 
-welcome to [http://www.xfyun.cn](http://example.com)
+欢迎访问 [讯飞开放平台](http://www.xfyun.cn)
 
 ## 暂停维护
 
